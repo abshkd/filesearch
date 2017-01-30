@@ -29,8 +29,8 @@ public class Index {
 
     public static void main(String[] args) throws IOException {
         String usage
-                = "Usage:\tjava org.abhishek.dedup.Index [-index dir] \n\nSee https://github.com/abshkd for details.";
-        if (args.length > 0 && ("-h".equals(args[0]) || "-help".equals(args[0]))) {
+                = "Usage:\tjava - jar dedup.jar [-index dir] \n\nSee https://github.com/abshkd for details.";
+        if (args.length == 0 || ("-h".equals(args[0]) || "-help".equals(args[0]))) {
             System.out.println(usage);
             System.exit(0);
         }

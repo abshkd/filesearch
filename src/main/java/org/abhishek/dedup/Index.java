@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -34,6 +35,7 @@ public class Index {
             System.out.println(usage);
             System.exit(0);
         }
+        long startTime = System.nanoTime();
         String index = "/";
         for (int i = 0; i < args.length; i++) {
             if ("-index".equals(args[i])) {
@@ -63,7 +65,8 @@ public class Index {
             }
         }
         );
-
+        long estimatedTime = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime);
+        System.out.println("Completed in " + estimatedTime + " ms");
     }
 
     /* As found on StackOverflow.

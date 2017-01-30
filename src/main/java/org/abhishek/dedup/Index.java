@@ -7,8 +7,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -30,23 +28,27 @@ public class Index {
 
     public static void main(String[] args) throws IOException {
         String usage
-                = "Usage:\tjava - jar dedup.jar [-index dir] \n\nSee https://github.com/abshkd for details.";
+                = "Usage:\tjava - jar dedup.jar [-index dir] [-url solarCollectionUrl] \n\nSee https://github.com/abshkd for details.";
         if (args.length == 0 || ("-h".equals(args[0]) || "-help".equals(args[0]))) {
             System.out.println(usage);
             System.exit(0);
         }
         long startTime = System.nanoTime();
         String index = "/";
+        String urlString = "http://localhost:8983/solr/files";
         for (int i = 0; i < args.length; i++) {
             if ("-index".equals(args[i])) {
                 index = args[i + 1];
                 i++;
             }
+            if ("-url".equals(args[i])) {
+                urlString = args[i + 1];
+                i++;
+            }
         }
-        String urlString = "http://localhost:8983/solr/files";
-        SolrClient solr = new HttpSolrClient.Builder(urlString).build();
+
         long sum;
-        Recurse r = new Recurse();
+        Recurse r = new Recurse(urlString);
         Files.walkFileTree(Paths.get(index), r);
         sum = r.getFilesCount();
         System.out.println("Total files: " + sum);
@@ -60,9 +62,10 @@ public class Index {
 class Recurse implements FileVisitor<Path> {
 
     private long filesCount;
+    SolrClient solr;
 
-    public Recurse() {
-
+    public Recurse(String url) {
+        solr = new HttpSolrClient.Builder(url).build();
     }
 
     @Override
@@ -72,16 +75,17 @@ class Recurse implements FileVisitor<Path> {
 
     @Override
     public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-        /* It may be easier to build index right here to improve BigO performance
-        * as well as avoid using complex HashMaps.
-        * 
-         */
         String path = file.toAbsolutePath().toString();
         filesCount++;
         SolrInputDocument document = new SolrInputDocument();
         document.addField("id", MD5(path));
         document.addField("path", path);
         document.addField("size", Files.size(file));
+        try {
+            solr.add(document);
+        } catch (SolrServerException ex) {
+            Logger.getLogger(Recurse.class.getName()).log(Level.SEVERE, null, ex);
+        }
 
         return FileVisitResult.CONTINUE;
     }
@@ -100,6 +104,9 @@ class Recurse implements FileVisitor<Path> {
         return filesCount;
     }
 
+    /*
+    * Not used, here for example only
+     */
     public static <T, E> Set<T> getKeysByValue(Map<T, E> map, E value) {
         return map.entrySet()
                 .stream()
@@ -110,7 +117,9 @@ class Recurse implements FileVisitor<Path> {
 
     /* As found on StackOverflow.
     * Given a path string compute MD5.
-    * Not ideal for File MD5
+    * Not ideal for File MD5.
+    * used for ID KEY in Solr.
+    * We know that filesystem cannot have two files with the same absolute path.
      */
     public String MD5(String md5) {
         try {

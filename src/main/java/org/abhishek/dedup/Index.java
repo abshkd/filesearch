@@ -22,17 +22,30 @@ import org.apache.solr.client.solrj.response.UpdateResponse;
 import org.apache.solr.common.SolrInputDocument;
 
 /**
- * Hello world!
+ * Build a Solr Index of Files in any filesystem for fast text search
  *
  */
-public class App {
+public class Index {
 
     public static void main(String[] args) throws IOException {
+        String usage
+                = "Usage:\tjava org.abhishek.dedup.Index [-index dir] \n\nSee https://github.com/abshkd for details.";
+        if (args.length > 0 && ("-h".equals(args[0]) || "-help".equals(args[0]))) {
+            System.out.println(usage);
+            System.exit(0);
+        }
+        String index = "/";
+        for (int i = 0; i < args.length; i++) {
+            if ("-index".equals(args[i])) {
+                index = args[i + 1];
+                i++;
+            }
+        }
         String urlString = "http://localhost:8983/solr/files";
         SolrClient solr = new HttpSolrClient.Builder(urlString).build();
         long sum;
         Recurse r = new Recurse();
-        Files.walkFileTree(Paths.get("G:\\O_Drive\\unfiled\\"), r);
+        Files.walkFileTree(Paths.get(index), r);
         sum = r.getFilesCount();
         System.out.println("Total files: " + sum);
 
@@ -46,13 +59,17 @@ public class App {
             try {
                 UpdateResponse response = solr.add(document);
             } catch (SolrServerException | IOException ex) {
-                Logger.getLogger(App.class.getName()).log(Level.SEVERE, null, ex);
+                Logger.getLogger(Index.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
         );
 
     }
 
+    /* As found on StackOverflow.
+    * Given a path string compute MD5.
+    * Not ideal for File MD5
+     */
     public static String MD5(String md5) {
         try {
             java.security.MessageDigest md = java.security.MessageDigest.getInstance("MD5");
@@ -87,6 +104,10 @@ class Recurse implements FileVisitor<Path> {
 
     @Override
     public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+        /* It may be easier to build index right here to improve BigO performance
+        * as well as avoid using complex HashMaps.
+        * 
+         */
         filesCount++;
         entry.put(file.toAbsolutePath(), Files.size(file));
         return FileVisitResult.CONTINUE;

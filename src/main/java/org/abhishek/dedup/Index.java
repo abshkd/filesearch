@@ -51,40 +51,8 @@ public class Index {
         sum = r.getFilesCount();
         System.out.println("Total files: " + sum);
 
-        Map entries = r.getEntry();
-
-        entries.forEach((name, size) -> {
-            SolrInputDocument document = new SolrInputDocument();
-            document.addField("id", MD5(name.toString()));
-            document.addField("path", name.toString());
-            document.addField("size", size);
-            try {
-                UpdateResponse response = solr.add(document);
-            } catch (SolrServerException | IOException ex) {
-                Logger.getLogger(Index.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
-        );
         long estimatedTime = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime);
         System.out.println("Completed in " + estimatedTime + " ms");
-    }
-
-    /* As found on StackOverflow.
-    * Given a path string compute MD5.
-    * Not ideal for File MD5
-     */
-    public static String MD5(String md5) {
-        try {
-            java.security.MessageDigest md = java.security.MessageDigest.getInstance("MD5");
-            byte[] array = md.digest(md5.getBytes());
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < array.length; ++i) {
-                sb.append(Integer.toHexString((array[i] & 0xFF) | 0x100).substring(1, 3));
-            }
-            return sb.toString();
-        } catch (java.security.NoSuchAlgorithmException e) {
-        }
-        return null;
     }
 
 }
@@ -92,12 +60,9 @@ public class Index {
 class Recurse implements FileVisitor<Path> {
 
     private long filesCount;
-    private final Map entry;
-    private static final int offset = 0;
-    private static final int length = 204800;
 
     public Recurse() {
-        entry = Collections.synchronizedMap(new HashMap<>());
+
     }
 
     @Override
@@ -111,8 +76,13 @@ class Recurse implements FileVisitor<Path> {
         * as well as avoid using complex HashMaps.
         * 
          */
+        String path = file.toAbsolutePath().toString();
         filesCount++;
-        entry.put(file.toAbsolutePath(), Files.size(file));
+        SolrInputDocument document = new SolrInputDocument();
+        document.addField("id", MD5(path));
+        document.addField("path", path);
+        document.addField("size", Files.size(file));
+
         return FileVisitResult.CONTINUE;
     }
 
@@ -130,16 +100,30 @@ class Recurse implements FileVisitor<Path> {
         return filesCount;
     }
 
-    public Map getEntry() {
-        return entry;
-    }
-
     public static <T, E> Set<T> getKeysByValue(Map<T, E> map, E value) {
         return map.entrySet()
                 .stream()
                 .filter(entry -> Objects.equals(entry.getValue(), value))
                 .map(Map.Entry::getKey)
                 .collect(Collectors.toSet());
+    }
+
+    /* As found on StackOverflow.
+    * Given a path string compute MD5.
+    * Not ideal for File MD5
+     */
+    public String MD5(String md5) {
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("MD5");
+            byte[] array = md.digest(md5.getBytes());
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < array.length; ++i) {
+                sb.append(Integer.toHexString((array[i] & 0xFF) | 0x100).substring(1, 3));
+            }
+            return sb.toString();
+        } catch (java.security.NoSuchAlgorithmException e) {
+        }
+        return null;
     }
 
 }

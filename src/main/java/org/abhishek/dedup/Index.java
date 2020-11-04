@@ -52,6 +52,14 @@ public class Index {
         sum = r.getFilesCount();
         System.out.println("Total files: " + sum);
 
+        SolrClient solr = new HttpSolrClient.Builder(urlString).build();
+        try {
+            //single commit for the bulk add.
+            solr.commit();
+        } catch (SolrServerException e) {
+            e.printStackTrace();
+        }
+
         long estimatedTime = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime);
         System.out.println("Completed in " + estimatedTime + " ms");
     }

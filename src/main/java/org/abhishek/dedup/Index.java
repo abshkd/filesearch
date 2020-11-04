@@ -17,7 +17,6 @@ import java.util.stream.Collectors;
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
-import org.apache.solr.client.solrj.response.UpdateResponse;
 import org.apache.solr.common.SolrInputDocument;
 
 /**
@@ -52,6 +51,14 @@ public class Index {
         Files.walkFileTree(Paths.get(index), r);
         sum = r.getFilesCount();
         System.out.println("Total files: " + sum);
+
+        SolrClient solr = new HttpSolrClient.Builder(urlString).build();
+        try {
+            //single commit for the bulk add.
+            solr.commit();
+        } catch (SolrServerException e) {
+            e.printStackTrace();
+        }
 
         long estimatedTime = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime);
         System.out.println("Completed in " + estimatedTime + " ms");

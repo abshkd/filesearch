@@ -18,6 +18,7 @@ import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.common.SolrInputDocument;
+import com.kstruct.gethostname4j.Hostname;
 
 /**
  * Build a Solr Index of Files in any filesystem for fast text search
@@ -88,6 +89,7 @@ class Recurse implements FileVisitor<Path> {
         document.addField("id", MD5(path));
         document.addField("path", path);
         document.addField("size", Files.size(file));
+        document.addField("host",Hostname.getHostname());
         try {
             solr.add(document);
         } catch (SolrServerException ex) {
